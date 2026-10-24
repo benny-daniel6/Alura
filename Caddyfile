@@ -1,0 +1,8 @@
+# HTTPS reverse proxy; Caddy obtains and renews the TLS certificate for $DOMAIN automatically.
+{$DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 12MB
+	}
+	reverse_proxy api:8000
+}

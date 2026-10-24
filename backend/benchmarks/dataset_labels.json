@@ -1,0 +1,203 @@
+{
+ "note": "Manually reviewed: single garment, phone-style photo, label verified by eye.",
+ "accepted": [
+  {
+   "id": "c000",
+   "category": "top",
+   "color": "purple",
+   "scene": "bed"
+  },
+  {
+   "id": "c005",
+   "category": "top",
+   "color": "cream",
+   "scene": "hanger"
+  },
+  {
+   "id": "c006",
+   "category": "top",
+   "color": "black",
+   "scene": "hanger"
+  },
+  {
+   "id": "c007",
+   "category": "top",
+   "color": "white",
+   "scene": "hanger"
+  },
+  {
+   "id": "c013",
+   "category": "top",
+   "color": "light blue",
+   "scene": "table"
+  },
+  {
+   "id": "c040",
+   "category": "top",
+   "color": "grey",
+   "scene": "hanger"
+  },
+  {
+   "id": "c111",
+   "category": "bottom",
+   "color": "beige",
+   "scene": "bed"
+  },
+  {
+   "id": "c113",
+   "category": "bottom",
+   "color": "red",
+   "scene": "folded_tag"
+  },
+  {
+   "id": "c120",
+   "category": "bottom",
+   "color": "brown",
+   "scene": "plain"
+  },
+  {
+   "id": "c121",
+   "category": "bottom",
+   "color": "olive",
+   "scene": "plain"
+  },
+  {
+   "id": "c126",
+   "category": "bottom",
+   "color": "light blue",
+   "scene": "table"
+  },
+  {
+   "id": "c130",
+   "category": "bottom",
+   "color": "black",
+   "scene": "hanger"
+  },
+  {
+   "id": "c131",
+   "category": "bottom",
+   "color": "navy",
+   "scene": "plain"
+  },
+  {
+   "id": "c125",
+   "category": "bottom",
+   "color": "multicolor",
+   "scene": "table"
+  },
+  {
+   "id": "c046",
+   "category": "outerwear",
+   "color": "black",
+   "scene": "floor"
+  },
+  {
+   "id": "c049",
+   "category": "outerwear",
+   "color": "red",
+   "scene": "display"
+  },
+  {
+   "id": "c050",
+   "category": "outerwear",
+   "color": "black",
+   "scene": "chair"
+  },
+  {
+   "id": "c051",
+   "category": "outerwear",
+   "color": "light blue",
+   "scene": "table"
+  },
+  {
+   "id": "c054",
+   "category": "outerwear",
+   "color": "beige",
+   "scene": "plain"
+  },
+  {
+   "id": "c078",
+   "category": "footwear",
+   "color": "brown",
+   "scene": "desk"
+  },
+  {
+   "id": "c079",
+   "category": "footwear",
+   "color": "brown",
+   "scene": "hand_held"
+  },
+  {
+   "id": "c077",
+   "category": "footwear",
+   "color": "tan",
+   "scene": "table"
+  },
+  {
+   "id": "c154",
+   "category": "footwear",
+   "color": "white",
+   "scene": "plain"
+  },
+  {
+   "id": "c160",
+   "category": "footwear",
+   "color": "white",
+   "scene": "floor"
+  },
+  {
+   "id": "c152",
+   "category": "footwear",
+   "color": "white",
+   "scene": "plain"
+  },
+  {
+   "id": "c082",
+   "category": "bag",
+   "color": "black",
+   "scene": "fabric"
+  },
+  {
+   "id": "c085",
+   "category": "bag",
+   "color": "black",
+   "scene": "floor"
+  },
+  {
+   "id": "c086",
+   "category": "bag",
+   "color": "blue",
+   "scene": "plain"
+  },
+  {
+   "id": "c094",
+   "category": "headwear",
+   "color": "black",
+   "scene": "desk"
+  },
+  {
+   "id": "c091",
+   "category": "headwear",
+   "color": "navy",
+   "scene": "plain"
+  },
+  {
+   "id": "c097",
+   "category": "accessory",
+   "color": "black",
+   "scene": "plain"
+  },
+  {
+   "id": "c101",
+   "category": "accessory",
+   "color": "brown",
+   "scene": "bed"
+  },
+  {
+   "id": "c103",
+   "category": "accessory",
+   "color": "multicolor",
+   "scene": "plain"
+  }
+ ]
+}

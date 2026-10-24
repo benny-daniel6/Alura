@@ -1,0 +1,365 @@
+openapi: 3.1.0
+info:
+  title: Alura AI Wardrobe & Styling API
+  description: >
+    Production REST API for Alura: Intelligent digital wardrobe, automatic background removal,
+    CLIP-powered visual search, AI stylist suggestions, calendar planning, and social fit challenges.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: https://api.aura-wardrobe.app/api/v1
+    description: Production API
+
+components:
+  securitySchemes:
+    FirebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token passed as Bearer token.
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          example: "Item not found or unauthorized"
+
+    UserResponse:
+      type: object
+      required: [id, email, role, items_count, tryon_credits]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [free, premium, admin]
+        items_count:
+          type: integer
+          example: 42
+        tryon_credits:
+          type: integer
+          example: 3
+        is_public:
+          type: boolean
+          example: false
+        has_completed_quiz:
+          type: boolean
+          example: true
+
+    StylePreferencesInput:
+      type: object
+      required: [style_vibes, preferred_colors, primary_occasions]
+      properties:
+        style_vibes:
+          type: array
+          items:
+            type: string
+          example: ["minimalist", "streetwear", "old_money"]
+        preferred_colors:
+          type: array
+          items:
+            type: string
+          example: ["monochrome", "earth_tones", "sage"]
+        avoided_colors:
+          type: array
+          items:
+            type: string
+          example: ["neon_yellow", "hot_pink"]
+        primary_occasions:
+          type: array
+          items:
+            type: string
+          example: ["office", "casual_daily", "night_out"]
+        climate_zone:
+          type: string
+          example: "temperate"
+        sizing_preference:
+          type: string
+          enum: [oversized, fitted, regular]
+          default: regular
+
+    StylePreferencesResponse:
+      allOf:
+        - $ref: '#/components/schemas/StylePreferencesInput'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+            quiz_completed:
+              type: boolean
+            updated_at:
+              type: string
+              format: date-time
+
+    WardrobeItemResponse:
+      type: object
+      required: [id, user_id, category, status, original_image_url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        category:
+          type: string
+          enum: [top, bottom, outerwear, dress, footwear, bag, accessory, headwear, one_piece]
+        sub_category:
+          type: string
+          nullable: true
+        primary_color:
+          type: string
+          nullable: true
+        secondary_color:
+          type: string
+          nullable: true
+        seasons:
+          type: array
+          items:
+            type: string
+        occasions:
+          type: array
+          items:
+            type: string
+        brand:
+          type: string
+          nullable: true
+        original_image_url:
+          type: string
+        cutout_image_url:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        is_favorite:
+          type: boolean
+        wear_count:
+          type: integer
+
+    StylistRequest:
+      type: object
+      required: [occasion]
+      properties:
+        occasion:
+          type: string
+          example: "Smart Casual Dinner"
+        weather_override:
+          type: object
+          properties:
+            temperature_c:
+              type: number
+              example: 18.5
+            condition:
+              type: string
+              example: "Light rain"
+        vibe_notes:
+          type: string
+          example: "Elevated modern minimalist with leather jacket"
+
+    SuggestedOutfit:
+      type: object
+      required: [title, reasoning, item_ids]
+      properties:
+        title:
+          type: string
+          example: "Refined Monochrome Transit"
+        reasoning:
+          type: string
+          example: "Combines water-resistant trench with tailored wool trousers and sleek Chelsea boots."
+        item_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        styling_tips:
+          type: array
+          items:
+            type: string
+
+    StylistResponse:
+      type: object
+      required: [occasion, suggestions]
+      properties:
+        occasion:
+          type: string
+        weather_context:
+          type: string
+        suggestions:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/SuggestedOutfit'
+
+security:
+  - FirebaseAuth: []
+
+paths:
+  /auth/sync:
+    post:
+      summary: Sync Firebase User
+      description: Validates Firebase JWT and creates or fetches existing user profile in PostgreSQL.
+      responses:
+        '200':
+          description: User record synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /users/me:
+    get:
+      summary: Get Current User Profile
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /users/me/preferences:
+    get:
+      summary: Get Current Style Quiz Preferences
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StylePreferencesResponse'
+    put:
+      summary: Submit or Update Style Quiz Preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StylePreferencesInput'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StylePreferencesResponse'
+
+  /users/me/delete-data:
+    delete:
+      summary: GDPR Delete My Data
+      description: Hard deletes all user wardrobe items, images from S3 storage, calendar logs, and profile records.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /wardrobe/items:
+    get:
+      summary: List Wardrobe Items with Filters
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: season
+          in: query
+          schema:
+            type: string
+        - name: is_favorite
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WardrobeItemResponse'
+
+  /wardrobe/items/upload:
+    post:
+      summary: Upload Image & Enqueue Background Removal / Tagging
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                initial_category:
+                  type: string
+      responses:
+        '202':
+          description: Upload accepted and queued for ML processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WardrobeItemResponse'
+
+  /stylist/suggest:
+    post:
+      summary: AI Stylist Outfit Generator
+      description: Generates 3 curated outfit proposals from user wardrobe matching weather & occasion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StylistRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StylistResponse'
+
+  /social/challenges/weekly:
+    get:
+      summary: Get Current Fit Challenge
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  theme:
+                    type: string
+                  starts_at:
+                    type: string
+                  ends_at:
+                    type: string

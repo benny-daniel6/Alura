@@ -1,0 +1,86 @@
+# Production stack for a single VPS: Postgres (pgvector), Redis, API, ML worker and Caddy (automatic HTTPS).
+# Photos go to S3-compatible storage (AWS S3, Cloudflare R2, ...), configured in backend/.env.production.
+#
+#   cp backend/.env.production.example backend/.env.production   # then fill it in
+#   DOMAIN=api.example.com POSTGRES_PASSWORD=... docker compose -f docker-compose.prod.yml up -d --build
+#
+# See DEPLOYMENT.md.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aura
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: aura
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aura"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env.production
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://aura:${POSTGRES_PASSWORD}@db:5432/aura
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./secrets:/run/secrets:ro   # Firebase service-account JSON lives here
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.arq_worker"]
+    env_file: ./backend/.env.production
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://aura:${POSTGRES_PASSWORD}@db:5432/aura
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./secrets:/run/secrets:ro
+    healthcheck:
+      disable: true   # no HTTP server in the worker
+    depends_on:
+      api:
+        condition: service_healthy   # the API runs the migrations first
+    deploy:
+      resources:
+        limits:
+          memory: 3g   # u2net + OpenCLIP need ~2 GB
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN to your API hostname}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
