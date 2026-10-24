@@ -22,6 +22,11 @@ RUN python -c "import rembg; rembg.new_session('u2net')" \
 
 COPY --chown=aura:aura . .
 
+# /app is created by root (WORKDIR); give the app user a writable dir for development-mode local storage
+USER root
+RUN mkdir -p /app/data/storage && chown aura:aura /app /app/data /app/data/storage
+USER aura
+
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD curl -fsS http://localhost:8000/health || exit 1
