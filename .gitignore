@@ -49,3 +49,4 @@ secrets/
 *.keystore
 key.properties
 *.tmp
+secrets.compose.env
