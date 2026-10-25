@@ -38,12 +38,19 @@ class StorageService:
             )
         if self._s3_client is None:
             import boto3
+            from botocore.config import Config
+            # On AWS, sign against the bucket's regional host: links signed for the global
+            # s3.amazonaws.com host get redirected and then fail for buckets outside us-east-1.
             self._s3_client = boto3.client(
                 "s3",
-                endpoint_url=settings.S3_ENDPOINT_URL or None,
+                endpoint_url=settings.S3_ENDPOINT_URL or f"https://s3.{settings.S3_REGION}.amazonaws.com",
                 aws_access_key_id=settings.S3_ACCESS_KEY,
                 aws_secret_access_key=settings.S3_SECRET_KEY,
                 region_name=settings.S3_REGION,
+                config=Config(
+                    signature_version="s3v4",
+                    s3={"addressing_style": "path" if settings.S3_ENDPOINT_URL else "virtual"},
+                ),
             )
         return self._s3_client
 
