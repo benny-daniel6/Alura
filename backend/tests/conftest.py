@@ -14,6 +14,7 @@ os.environ.setdefault("DEV_AUTH_BYPASS", "true")
 os.environ["GEMINI_API_KEY"] = ""
 # Fast background-removal model for the real-worker integration test (production default is birefnet-general)
 os.environ.setdefault("REMBG_MODEL", "u2net")
+os.environ["RATE_LIMIT_BACKEND"] = "memory"
 
 import pytest
 import pytest_asyncio

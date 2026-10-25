@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from app.models.outfit import SeasonType
 from app.schemas.wardrobe import WardrobeItemResponse
 
@@ -80,3 +80,8 @@ class OutfitResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("preview_image_url")
+    def _signed(self, url: Optional[str]) -> Optional[str]:
+        from app.services.storage import storage_service
+        return storage_service.client_url(url)

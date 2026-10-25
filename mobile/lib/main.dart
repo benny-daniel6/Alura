@@ -171,14 +171,15 @@ class _AppInitializerState extends State<AppInitializer> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('Try again'),
                     ),
-                    TextButton.icon(
-                      onPressed: () async {
-                        if (await showServerSettingsDialog(context))
-                          _checkInitialState();
-                      },
-                      icon: const Icon(Icons.dns_outlined),
-                      label: const Text('Server address'),
-                    ),
+                    if (serverSettingsAvailable)
+                      TextButton.icon(
+                        onPressed: () async {
+                          if (await showServerSettingsDialog(context))
+                            _checkInitialState();
+                        },
+                        icon: const Icon(Icons.dns_outlined),
+                        label: const Text('Server address'),
+                      ),
                   ],
                 ],
               ),

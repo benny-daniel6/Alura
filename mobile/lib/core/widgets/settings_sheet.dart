@@ -15,6 +15,10 @@ Future<void> showSettingsSheet(
   required VoidCallback onServerChanged,
   required VoidCallback onDeleteData,
   required VoidCallback onSignOut,
+  bool isGuest = false,
+  VoidCallback? onSaveAccount,
+  VoidCallback? onChangePassword,
+  VoidCallback? onSignOutEverywhere,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -28,6 +32,10 @@ Future<void> showSettingsSheet(
       onServerChanged: onServerChanged,
       onDeleteData: onDeleteData,
       onSignOut: onSignOut,
+      isGuest: isGuest,
+      onSaveAccount: onSaveAccount,
+      onChangePassword: onChangePassword,
+      onSignOutEverywhere: onSignOutEverywhere,
     ),
   );
 }
@@ -38,6 +46,10 @@ class _SettingsSheet extends StatelessWidget {
   final VoidCallback onServerChanged;
   final VoidCallback onDeleteData;
   final VoidCallback onSignOut;
+  final bool isGuest;
+  final VoidCallback? onSaveAccount;
+  final VoidCallback? onChangePassword;
+  final VoidCallback? onSignOutEverywhere;
 
   const _SettingsSheet({
     required this.email,
@@ -45,6 +57,10 @@ class _SettingsSheet extends StatelessWidget {
     required this.onServerChanged,
     required this.onDeleteData,
     required this.onSignOut,
+    this.isGuest = false,
+    this.onSaveAccount,
+    this.onChangePassword,
+    this.onSignOutEverywhere,
   });
 
   @override
@@ -89,7 +105,8 @@ class _SettingsSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(name, style: theme.textTheme.titleMedium),
-                      Text(email, style: theme.textTheme.bodyMedium),
+                      Text(isGuest ? 'Guest account (not saved)' : email,
+                          style: theme.textTheme.bodyMedium),
                     ],
                   ),
                 ),
@@ -129,19 +146,32 @@ class _SettingsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             _sectionLabel(theme, 'Account'),
-            _tile(
-              theme,
-              icon: Icons.dns_outlined,
-              title: 'Server',
-              subtitle:
-                  '${server.host}${server.hasPort ? ':${server.port}' : ''}',
-              onTap: () async {
-                if (await showServerSettingsDialog(context)) {
-                  onServerChanged();
-                  if (context.mounted) Navigator.of(context).pop();
-                }
-              },
-            ),
+            if (isGuest && onSaveAccount != null)
+              _tile(
+                theme,
+                icon: Icons.verified_user_outlined,
+                title: 'Save your account',
+                subtitle: 'Add an email and password to keep your wardrobe',
+                color: AuraColors.accentIris,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onSaveAccount!();
+                },
+              ),
+            if (serverSettingsAvailable)
+              _tile(
+                theme,
+                icon: Icons.dns_outlined,
+                title: 'Server',
+                subtitle:
+                    '${server.host}${server.hasPort ? ':${server.port}' : ''}',
+                onTap: () async {
+                  if (await showServerSettingsDialog(context)) {
+                    onServerChanged();
+                    if (context.mounted) Navigator.of(context).pop();
+                  }
+                },
+              ),
             _tile(
               theme,
               icon: Icons.delete_forever_outlined,
@@ -153,6 +183,27 @@ class _SettingsSheet extends StatelessWidget {
                 onDeleteData();
               },
             ),
+            if (!isGuest && onChangePassword != null)
+              _tile(
+                theme,
+                icon: Icons.password_outlined,
+                title: 'Change password',
+                subtitle: 'Signs you out on your other devices',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onChangePassword!();
+                },
+              ),
+            if (!isGuest && onSignOutEverywhere != null)
+              _tile(
+                theme,
+                icon: Icons.devices_other_outlined,
+                title: 'Sign out on all devices',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onSignOutEverywhere!();
+                },
+              ),
             _tile(
               theme,
               icon: Icons.logout,

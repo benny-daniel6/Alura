@@ -1,4 +1,5 @@
 import io
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
@@ -20,6 +21,7 @@ from arq import create_pool
 from arq.connections import RedisSettings
 
 from app.core.config import settings
+from app.core import rate_limit
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -36,7 +38,12 @@ from app.services.storage import storage_service
 from app.services.similarity import find_similar_items
 from app.workers.arq_worker import process_wardrobe_item
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Pillow refuses images above this many pixels (DecompressionBombError) instead of exhausting memory.
+# 40 MP covers every phone camera; the app sends at most 1024 px anyway.
+Image.MAX_IMAGE_PIXELS = 40_000_000
 
 MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB limit
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -100,6 +107,8 @@ async def upload_wardrobe_item(
     4. Enqueues background job to isolated ARQ Redis worker.
     5. Returns immediately with item_id, job_id, and status 'pending'.
     """
+    await rate_limit.uploads.enforce(str(current_user.id), "Upload limit reached. Please try again in a while.")
+
     # 1. Content-type and max file size validation
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
@@ -120,9 +129,10 @@ async def upload_wardrobe_item(
     except HTTPException:
         raise
     except Exception as e:
+        logger.info(f"Rejected upload from user {current_user.id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Corrupt or invalid image format: {str(e)}"
+            detail="Corrupt or invalid image format. Please choose a different photo."
         )
 
     # 3. Atomic freemium check: lock the user row for the rest of this transaction.
@@ -233,7 +243,7 @@ async def list_wardrobe_items(
     category: Optional[ClothingCategory] = None,
     season: Optional[str] = None,
     is_favorite: Optional[bool] = None,
-    search: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

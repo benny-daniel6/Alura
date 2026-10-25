@@ -1,8 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/api_constants.dart';
 import '../theme/app_theme.dart';
+
+/// Release builds talk only to the server they were built for (API_BASE_URL over HTTPS).
+const bool serverSettingsAvailable = kDebugMode;
 
 /// Lets the user point the app at a different Alura server (e.g. the PC's Wi-Fi address)
 /// and checks it is reachable before saving.

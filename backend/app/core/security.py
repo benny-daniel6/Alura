@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -8,20 +9,16 @@ import firebase_admin
 from firebase_admin import auth as firebase_auth, credentials
 
 from app.core.config import settings
+from app.core.tokens import decode_access_token_claims
 from app.db.session import get_db
 from app.models.user import User, UserPreference
 
 logger = logging.getLogger(__name__)
 
-# Initialize Firebase Admin SDK if credentials provided
-if not firebase_admin._apps:
+# Firebase Admin SDK only when a service account is configured (optional sign-in provider)
+if not firebase_admin._apps and settings.FIREBASE_CREDENTIALS_PATH:
     try:
-        if settings.FIREBASE_CREDENTIALS_PATH:
-            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
-            firebase_admin.initialize_app(cred)
-        else:
-            # Attempt default application credentials
-            firebase_admin.initialize_app()
+        firebase_admin.initialize_app(credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH))
     except Exception as e:
         logger.warning(f"Firebase Admin SDK not initialized with live credentials: {e}. DEV_AUTH_BYPASS={settings.DEV_AUTH_BYPASS}")
 
@@ -42,6 +39,11 @@ async def verify_firebase_token(credentials: Optional[HTTPAuthorizationCredentia
 
     token = credentials.credentials
 
+    # Alura's own session token (email/password or Google sign-in)
+    decoded = decode_access_token_claims(token)
+    if decoded is not None:
+        return {"user_id": decoded[0], "iat": decoded[1]}
+
     # Development / Testing Bypass Mode (Strictly disallowed in production)
     is_dev_allowed = (settings.ENVIRONMENT == "development" and settings.DEV_AUTH_BYPASS)
     if is_dev_allowed and (token.startswith("dev-token:") or token == "test-token-123"):
@@ -59,16 +61,36 @@ async def verify_firebase_token(credentials: Optional[HTTPAuthorizationCredentia
             "picture": None,
         }
 
+    if not firebase_admin._apps:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         decoded_token = firebase_auth.verify_id_token(token)
         return decoded_token
     except Exception as e:
-        logger.error(f"Firebase token verification failed: {e}")
+        logger.info(f"Firebase token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid or expired Firebase ID token: {str(e)}",
+            detail="Invalid or expired session. Please sign in again.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+LAST_SEEN_RESOLUTION = timedelta(hours=6)
+
+
+async def touch_last_seen(db: AsyncSession, user: User) -> None:
+    """Records activity at most every few hours (guest accounts unused for a month are deleted)."""
+    now = datetime.now(timezone.utc)
+    last = user.last_seen_at
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    if last is None or now - last > LAST_SEEN_RESOLUTION:
+        user.last_seen_at = now
+        await db.commit()
 
 
 async def get_current_user(
@@ -76,8 +98,28 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
-    Retrieves or auto-provisions the authenticated user in PostgreSQL.
+    Retrieves the authenticated user (Alura token), or auto-provisions a Firebase / dev user.
     """
+    if "user_id" in token_payload:
+        user = (await db.execute(select(User).where(User.id == token_payload["user_id"]))).scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="This account no longer exists.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        revoked_before = user.tokens_valid_after
+        if revoked_before is not None and revoked_before.tzinfo is None:
+            revoked_before = revoked_before.replace(tzinfo=timezone.utc)  # stored as UTC; some drivers drop the zone
+        if revoked_before is not None and token_payload.get("iat", 0) < int(revoked_before.timestamp()):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="You were signed out. Please sign in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        await touch_last_seen(db, user)
+        return user
+
     firebase_uid = token_payload.get("uid")
     email = token_payload.get("email")
 

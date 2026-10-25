@@ -19,13 +19,16 @@ def check_production_config(settings: Settings) -> Tuple[List[str], List[str]]:
     if not (settings.S3_BUCKET_NAME and settings.S3_ACCESS_KEY and settings.S3_SECRET_KEY):
         errors.append("S3 storage is not configured: set S3_BUCKET_NAME, S3_ACCESS_KEY and S3_SECRET_KEY.")
 
-    firebase_file = settings.FIREBASE_CREDENTIALS_PATH or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-    if not firebase_file:
+    if len(settings.JWT_SECRET) < 32:
         errors.append(
-            "Sign-in is not configured: set FIREBASE_CREDENTIALS_PATH to a Firebase service-account JSON file."
+            "Sign-in is not configured: set JWT_SECRET to a random string of 32+ characters "
+            "(python -c \"import secrets; print(secrets.token_urlsafe(48))\")."
         )
-    elif not os.path.isfile(firebase_file):
+    firebase_file = settings.FIREBASE_CREDENTIALS_PATH
+    if firebase_file and not os.path.isfile(firebase_file):
         errors.append(f"Firebase credentials file not found: {firebase_file}")
+    if not settings.GOOGLE_OAUTH_CLIENT_IDS:
+        warnings.append("GOOGLE_OAUTH_CLIENT_IDS is empty: 'Continue with Google' is off (email and guest sign-in work).")
 
     if settings.DEV_AUTH_BYPASS:
         warnings.append("DEV_AUTH_BYPASS is set but ignored outside development; remove it.")

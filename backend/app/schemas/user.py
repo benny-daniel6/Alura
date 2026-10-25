@@ -17,11 +17,14 @@ class UserCreate(UserBase):
 
 
 class UserResponse(UserBase):
+    # Output only: guest accounts use an undeliverable placeholder address that EmailStr would reject
+    email: str
     id: uuid.UUID
     role: UserRole
     items_count: int
     tryon_credits: int
     is_public: bool
+    is_guest: bool = False
     has_completed_quiz: bool = False
     created_at: datetime
 
@@ -82,3 +85,30 @@ class DevTokenResponse(BaseModel):
     token_type: str = "bearer"
     firebase_uid: str
     email: str
+
+
+# --- Alura account sign-in ---
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    display_name: Optional[str] = Field(default=None, max_length=100)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class GoogleSignInRequest(BaseModel):
+    id_token: str = Field(..., min_length=20, max_length=4096)
+
+
+class AuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse

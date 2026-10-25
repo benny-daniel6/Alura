@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.user import User, UserPreference
 from app.models.wardrobe import WardrobeItem
 from app.models.outfit import Outfit, OutfitItem
-from app.services.storage import storage_service
+from app.services.account_purge import purge_user
 from app.schemas.user import (
     UserResponse,
     StylePreferencesInput,
@@ -117,41 +117,10 @@ async def delete_my_data(
     outfits, calendar history, and user profile record.
     """
     user_id = current_user.id
-
-    # Collect every stored asset before the rows disappear
-    item_rows = (await db.execute(
-        select(
-            WardrobeItem.original_image_url,
-            WardrobeItem.cutout_image_url,
-            WardrobeItem.thumbnail_url,
-            WardrobeItem.showcase_image_url,
-        ).where(WardrobeItem.user_id == user_id)
-    )).all()
-    preview_urls = (await db.execute(
-        select(Outfit.preview_image_url).where(Outfit.user_id == user_id)
-    )).scalars().all()
-    asset_urls = [url for row in item_rows for url in row if url] + [url for url in preview_urls if url]
-
-    # Delete children explicitly: the ORM would otherwise try to NULL wardrobe_items.user_id
-    # (User.wardrobe_items backref) instead of relying on ON DELETE CASCADE
-    user_outfit_ids = select(Outfit.id).where(Outfit.user_id == user_id)
-    await db.execute(delete(OutfitItem).where(OutfitItem.outfit_id.in_(user_outfit_ids)))
-    await db.execute(delete(Outfit).where(Outfit.user_id == user_id))
-    await db.execute(delete(WardrobeItem).where(WardrobeItem.user_id == user_id))
-    await db.delete(current_user)  # preferences cascade via the ORM relationship
-    await db.commit()
-
-    failed = 0
-    for url in asset_urls:
-        try:
-            await storage_service.delete_file(url)
-        except Exception as e:
-            failed += 1
-            logger.error(f"GDPR purge could not delete asset for user {user_id}: {e}")
-    if failed:
-        logger.error(f"GDPR purge for user {user_id}: {failed} of {len(asset_urls)} assets need manual cleanup")
+    email = current_user.email
+    await purge_user(db, current_user)
 
     return {
         "success": True,
-        "message": f"All data associated with account {current_user.email} (ID: {user_id}) has been permanently purged."
+        "message": f"All data associated with account {email} (ID: {user_id}) has been permanently purged."
     }

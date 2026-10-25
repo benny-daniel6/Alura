@@ -18,6 +18,16 @@ class Settings(BaseSettings):
     FIREBASE_PROJECT_ID: str = "aura-wardrobe-dev"
     DEV_AUTH_BYPASS: bool = False  # Only honoured when ENVIRONMENT=development
 
+    # Alura accounts (email/password + Google): signed session tokens
+    JWT_SECRET: str = ""  # required outside development; generate with: python -c "import secrets; print(secrets.token_urlsafe(48))"
+    ACCESS_TOKEN_DAYS: int = 30
+    # OAuth client IDs whose Google ID tokens are accepted (the app's Web client ID). Empty = Google sign-in off.
+    GOOGLE_OAUTH_CLIENT_IDS: List[str] = []
+    # Guest accounts not used for this many days are deleted (daily worker job)
+    GUEST_RETENTION_DAYS: int = 30
+    # "redis" shares rate limits across API workers; "memory" is per process (tests)
+    RATE_LIMIT_BACKEND: str = "redis"
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
@@ -29,6 +39,9 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = ""
     S3_REGION: str = "us-east-1"
     S3_PUBLIC_BASE_URL: str = ""  # Public URL prefix for objects; derived from endpoint/bucket if empty
+    # Private bucket: API responses carry short-lived signed links instead of public URLs
+    S3_SIGNED_URLS: bool = True
+    S3_SIGNED_URL_SECONDS: int = 24 * 3600
 
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["*"]

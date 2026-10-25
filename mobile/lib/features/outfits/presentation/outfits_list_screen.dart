@@ -147,7 +147,10 @@ class _OutfitsListScreenState extends State<OutfitsListScreen> {
                 child: AspectRatio(
                   aspectRatio: preview != null ? _previewAspect(outfit) : 2 / 3,
                   child: preview != null
-                      ? CachedNetworkImage(imageUrl: preview, fit: BoxFit.cover)
+                      ? CachedNetworkImage(
+                          imageUrl: preview,
+                          cacheKey: ApiConstants.mediaCacheKey(preview),
+                          fit: BoxFit.cover)
                       : OutfitCollage.forOutfit(outfit),
                 ),
               ),
@@ -398,6 +401,7 @@ class _OutfitsListScreenState extends State<OutfitsListScreen> {
                   width: double.infinity,
                   child: CachedNetworkImage(
                     imageUrl: preview,
+                    cacheKey: ApiConstants.mediaCacheKey(preview),
                     fit: BoxFit.cover,
                     errorWidget: (_, __, ___) =>
                         ColoredBox(color: AuraColors.surfaceLight),

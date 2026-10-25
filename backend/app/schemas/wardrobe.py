@@ -1,33 +1,33 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from app.models.wardrobe import ClothingCategory, ProcessingStatus
 
 
 class WardrobeItemBase(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=150)
     category: ClothingCategory = ClothingCategory.TOP
-    sub_category: Optional[str] = None
-    primary_color: Optional[str] = None
-    secondary_color: Optional[str] = None
+    sub_category: Optional[str] = Field(default=None, max_length=100)
+    primary_color: Optional[str] = Field(default=None, max_length=50)
+    secondary_color: Optional[str] = Field(default=None, max_length=50)
     seasons: List[str] = Field(default_factory=lambda: ["all_season"])
     occasions: List[str] = Field(default_factory=list)
-    brand: Optional[str] = None
-    size: Optional[str] = None
+    brand: Optional[str] = Field(default=None, max_length=100)
+    size: Optional[str] = Field(default=None, max_length=30)
     is_favorite: bool = False
 
 
 class WardrobeItemUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=150)
     category: Optional[ClothingCategory] = None
-    sub_category: Optional[str] = None
-    primary_color: Optional[str] = None
-    secondary_color: Optional[str] = None
-    seasons: Optional[List[str]] = None
-    occasions: Optional[List[str]] = None
-    brand: Optional[str] = None
-    size: Optional[str] = None
+    sub_category: Optional[str] = Field(default=None, max_length=100)
+    primary_color: Optional[str] = Field(default=None, max_length=50)
+    secondary_color: Optional[str] = Field(default=None, max_length=50)
+    seasons: Optional[List[str]] = Field(default=None, max_length=5)
+    occasions: Optional[List[str]] = Field(default=None, max_length=10)
+    brand: Optional[str] = Field(default=None, max_length=100)
+    size: Optional[str] = Field(default=None, max_length=30)
     is_favorite: Optional[bool] = None
 
 
@@ -47,6 +47,11 @@ class WardrobeItemResponse(WardrobeItemBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("original_image_url", "cutout_image_url", "showcase_image_url", "thumbnail_url")
+    def _signed(self, url: Optional[str]) -> Optional[str]:
+        from app.services.storage import storage_service
+        return storage_service.client_url(url)
 
 
 class WardrobeUploadResponse(BaseModel):

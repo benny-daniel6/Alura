@@ -2,6 +2,7 @@ import asyncio
 import logging
 import uuid
 from typing import Dict, Any, Optional, Tuple
+from arq import cron
 from arq.connections import RedisSettings
 from sqlalchemy import select
 
@@ -10,6 +11,7 @@ from app.db.session import AsyncSessionLocal
 from app.models.wardrobe import WardrobeItem, ProcessingStatus, ClothingCategory
 from app.services.ml_pipeline import ml_pipeline, MLPipeline
 from app.services.storage import storage_service
+from app.services.account_purge import purge_stale_guests
 from app.services.gemini import GeminiClient, gemini_client
 from app.services.garment_studio import create_showcase, tag_garment
 
@@ -150,8 +152,16 @@ async def process_wardrobe_item(ctx: Dict[str, Any], item_id: str):
             await db.commit()
 
 
+async def cleanup_stale_guests(ctx: Dict[str, Any]):
+    """Daily: delete guest accounts (and their photos) unused for GUEST_RETENTION_DAYS."""
+    session_factory = ctx.get("session_factory", AsyncSessionLocal)
+    async with session_factory() as db:
+        return await purge_stale_guests(db, settings.GUEST_RETENTION_DAYS)
+
+
 class WorkerSettings:
     functions = [process_wardrobe_item]
+    cron_jobs = [cron(cleanup_stale_guests, hour=3, minute=30, run_at_startup=False)]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)

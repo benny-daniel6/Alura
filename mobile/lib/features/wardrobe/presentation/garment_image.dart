@@ -60,6 +60,7 @@ class GarmentImage extends StatelessWidget {
     if (url == null) return const _GarmentPlaceholder();
     return CachedNetworkImage(
       imageUrl: url,
+      cacheKey: ApiConstants.mediaCacheKey(url),
       fit: fit,
       fadeInDuration: const Duration(milliseconds: 120),
       placeholder: (_, __) => Center(

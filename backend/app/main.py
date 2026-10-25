@@ -39,9 +39,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url=f"{settings.API_V1_STR}/docs",
-    redoc_url=f"{settings.API_V1_STR}/redoc",
+    # Interactive API docs only in development; production does not advertise its endpoints
+    openapi_url=f"{settings.API_V1_STR}/openapi.json" if settings.is_development else None,
+    docs_url=f"{settings.API_V1_STR}/docs" if settings.is_development else None,
+    redoc_url=f"{settings.API_V1_STR}/redoc" if settings.is_development else None,
     lifespan=lifespan,
     description="Backend API for Alura AI Wardrobe & Styling application."
 )
@@ -51,10 +52,23 @@ if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
+        # Bearer tokens, no cookies: credentials are never needed (and "*" + credentials reflects any origin)
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    if request.url.path.startswith(settings.API_V1_STR):
+        response.headers.setdefault("Cache-Control", "no-store")  # account data must not sit in shared caches
+    return response
+
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

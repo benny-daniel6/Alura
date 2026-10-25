@@ -3,6 +3,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/settings_sheet.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/auth_screen.dart';
+import '../../auth/presentation/change_password_dialog.dart';
+import '../../auth/presentation/save_account_dialog.dart';
 import '../../wardrobe/presentation/wardrobe_screen.dart';
 import '../../outfits/presentation/outfits_list_screen.dart';
 import '../../stylist/presentation/stylist_screen.dart';
@@ -20,6 +22,18 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   int _wardrobeGeneration = 0;
   int _outfitsGeneration = 0;
   final AuthRepository _authRepo = AuthRepository();
+  late UserModel _user = widget.user;
+
+  Future<void> _saveGuestAccount() async {
+    final upgraded = await showSaveAccountDialog(context);
+    if (upgraded == null || !mounted) return;
+    setState(() => _user = upgraded);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: const Text('Account saved'),
+          backgroundColor: AuraColors.success),
+    );
+  }
 
   Future<void> _handleDeleteData() async {
     final confirmed = await showDialog<bool>(
@@ -60,10 +74,21 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   }
 
   String get _initial {
-    final source = (widget.user.displayName?.trim().isNotEmpty ?? false)
-        ? widget.user.displayName!
-        : widget.user.email;
+    final source = (_user.displayName?.trim().isNotEmpty ?? false)
+        ? _user.displayName!
+        : _user.email;
     return source.isEmpty ? '?' : source.trim()[0].toUpperCase();
+  }
+
+  Future<void> _handleSignOutEverywhere() async {
+    try {
+      await _authRepo.signOutEverywhere();
+    } catch (_) {
+      await _authRepo.signOut(); // signed out here regardless
+    }
+    if (!mounted) return;
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => const AuthScreen()));
   }
 
   Future<void> _handleSignOut() async {
@@ -117,26 +142,63 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
               ),
               onPressed: () => showSettingsSheet(
                 context,
-                email: widget.user.email,
-                displayName: widget.user.displayName,
+                email: _user.email,
+                displayName: _user.displayName,
                 onServerChanged: () => setState(() {
                   _wardrobeGeneration++;
                   _outfitsGeneration++;
                 }),
                 onDeleteData: _handleDeleteData,
                 onSignOut: _handleSignOut,
+                isGuest: _user.isGuest,
+                onSaveAccount: _saveGuestAccount,
+                onChangePassword: () => showChangePasswordDialog(context),
+                onSignOutEverywhere: _handleSignOutEverywhere,
               ),
             ),
             const SizedBox(width: 8),
           ],
         ),
         // The stylist keeps its results across tab switches; the lists reload each time they are opened
-        body: IndexedStack(
-          index: _selectedTabIndex,
+        body: Column(
           children: [
-            WardrobeScreen(key: ValueKey('wardrobe-$_wardrobeGeneration')),
-            OutfitsListScreen(key: ValueKey('outfits-$_outfitsGeneration')),
-            const StylistScreen(),
+            if (_user.isGuest)
+              Material(
+                color: AuraColors.accentIris.withOpacity(0.12),
+                child: InkWell(
+                  onTap: _saveGuestAccount,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 18, color: AuraColors.accentIrisGlow),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            "You're using a guest account. Save it to keep your wardrobe.",
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AuraColors.textPrimary, fontSize: 12),
+                          ),
+                        ),
+                        Text('Save',
+                            style: theme.textTheme.labelLarge
+                                ?.copyWith(color: AuraColors.accentIrisGlow)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(
+                child: IndexedStack(
+              index: _selectedTabIndex,
+              children: [
+                WardrobeScreen(key: ValueKey('wardrobe-$_wardrobeGeneration')),
+                OutfitsListScreen(key: ValueKey('outfits-$_outfitsGeneration')),
+                const StylistScreen(),
+              ],
+            )),
           ],
         ),
         bottomNavigationBar: NavigationBar(

@@ -59,6 +59,9 @@ class ApiConstants {
   /// Server origin (scheme + host + port) used to resolve relative media paths.
   static String get origin => Uri.parse(baseUrl).origin;
 
+  /// Stable image-cache key: the URL without its query, so signed links (which change) reuse the cache.
+  static String mediaCacheKey(String url) => url.split('?').first;
+
   /// Development storage returns relative `/static/...` paths; S3 returns absolute URLs.
   static String? mediaUrl(String? path) {
     if (path == null || path.isEmpty) return null;
@@ -69,6 +72,13 @@ class ApiConstants {
   // Endpoints
   static const String authSync = '/auth/sync';
   static const String authDevToken = '/auth/dev-token';
+  static const String authRegister = '/auth/register';
+  static const String authLogin = '/auth/login';
+  static const String authGuest = '/auth/guest';
+  static const String authUpgrade = '/auth/upgrade';
+  static const String authGoogle = '/auth/google';
+  static const String authPassword = '/auth/password';
+  static const String authLogoutAll = '/auth/logout-all';
   static const String usersMe = '/users/me';
   static const String usersPreferences = '/users/me/preferences';
   static const String usersDeleteData = '/users/me/delete-data';

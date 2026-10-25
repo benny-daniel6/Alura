@@ -73,6 +73,19 @@ class StorageService:
 
     # ---------- Public API ----------
 
+    def client_url(self, stored_url: Optional[str]) -> Optional[str]:
+        """The URL to hand to the app: a short-lived signed link for a private S3 bucket."""
+        if not stored_url or self.uses_local_storage or not settings.S3_SIGNED_URLS:
+            return stored_url
+        try:
+            return self._s3().generate_presigned_url(
+                "get_object",
+                Params={"Bucket": settings.S3_BUCKET_NAME, "Key": self._key_from_url(stored_url)},
+                ExpiresIn=settings.S3_SIGNED_URL_SECONDS,
+            )
+        except Exception:
+            return stored_url
+
     async def save_file(self, file_bytes: bytes, filename: str, subfolder: str = "originals") -> str:
         """Saves bytes and returns the URL clients should use to fetch them."""
         if not self.uses_local_storage:

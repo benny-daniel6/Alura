@@ -9,7 +9,8 @@ from sqlalchemy import (
     ForeignKey,
     JSON,
     Enum as SQLEnum,
-    func
+    func,
+    false,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,6 +34,14 @@ class User(Base):
     )
     firebase_uid: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    # Alura accounts: scrypt hash for email/password sign-in; Google account id ("sub") once linked
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    google_sub: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    is_guest: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
+    # Sessions issued before this moment are rejected (password change, "sign out everywhere")
+    tokens_valid_after: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Last authenticated request (updated at most every few hours); drives guest clean-up
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     role: Mapped[UserRole] = mapped_column(

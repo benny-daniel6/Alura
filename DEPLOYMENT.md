@@ -6,7 +6,7 @@ Two parts: the **backend** (API, ML worker, Postgres + pgvector, Redis) on a ser
 
 | Item | Status | What's needed |
 |---|---|---|
-| **Sign-in** | Not built. The app has a developer login in debug builds only; release builds show "Sign-in is coming soon". | Choose a provider. The backend already verifies Firebase ID tokens. |
+| Sign-in | Ready: email + password, guest accounts (deleted after 30 days unused), optional Google. | `JWT_SECRET`. For Google: a Google Cloud OAuth Web client ID in `GOOGLE_OAUTH_CLIENT_IDS` and `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` |
 | Photo storage | Ready | An S3-compatible bucket (AWS S3, Cloudflare R2, ...). |
 | AI (Gemini) | Optional | `GEMINI_API_KEY` for studio photos and the AI stylist. Without it, local models and the rule-based stylist are used. |
 | Privacy policy | Not written | Required by Google Play. It must mention that photos are stored on your server and, with Gemini enabled, sent to Google. |

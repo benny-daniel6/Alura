@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.core import rate_limit
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.user import User, UserPreference
@@ -195,6 +196,7 @@ async def suggest_outfits(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await rate_limit.stylist_requests.enforce(str(current_user.id), "You've asked the stylist a lot this hour. Try again soon.")
     rows_by_id, wardrobe_items = await load_wardrobe(db, current_user)
     if not wardrobe_items:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=NO_ITEMS_DETAIL)

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
 
@@ -30,8 +31,7 @@ class ApiClient {
         onRequest: (options, handler) async {
           // The server can be changed at runtime in Server settings
           options.baseUrl = ApiConstants.baseUrl;
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString(tokenKey);
+          final token = await getToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -52,17 +52,32 @@ class ApiClient {
     );
   }
 
+  static const FlutterSecureStorage _secure = FlutterSecureStorage();
+  String? _cachedToken;
+
   Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(tokenKey, token);
+    _cachedToken = token;
+    await _secure.write(key: tokenKey, value: token);
   }
 
   Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(tokenKey);
+    if (_cachedToken != null) return _cachedToken;
+    _cachedToken = await _secure.read(key: tokenKey);
+    if (_cachedToken == null) {
+      // Builds before 1.0.0 kept the token in plain preferences: move it into secure storage
+      final prefs = await SharedPreferences.getInstance();
+      final legacy = prefs.getString(tokenKey);
+      if (legacy != null) {
+        await saveToken(legacy);
+        await prefs.remove(tokenKey);
+      }
+    }
+    return _cachedToken;
   }
 
   Future<void> clearToken() async {
+    _cachedToken = null;
+    await _secure.delete(key: tokenKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(tokenKey);
   }
