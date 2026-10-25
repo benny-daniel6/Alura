@@ -55,6 +55,11 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // R8 can't see what shared_preferences reaches over JNI (plugin classes and the Kotlin
+            // runtime), and strips it, which hangs the app on the splash screen. The Dart code is
+            // still obfuscated with --obfuscate.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
