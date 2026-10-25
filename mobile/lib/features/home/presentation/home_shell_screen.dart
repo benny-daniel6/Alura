@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/settings_sheet.dart';
 import '../../auth/data/auth_repository.dart';
@@ -23,6 +24,25 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   int _outfitsGeneration = 0;
   final AuthRepository _authRepo = AuthRepository();
   late UserModel _user = widget.user;
+  static const _guestBannerDismissedKey = 'guest_banner_dismissed';
+  bool _guestBannerDismissed = true; // hidden until the saved choice is read
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      if (!mounted) return;
+      setState(() => _guestBannerDismissed =
+          prefs.getBool(_guestBannerDismissedKey) ?? false);
+    });
+  }
+
+  /// Hides the guest banner for good; saving the account stays available in Settings.
+  Future<void> _dismissGuestBanner() async {
+    setState(() => _guestBannerDismissed = true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_guestBannerDismissedKey, true);
+  }
 
   Future<void> _saveGuestAccount() async {
     final upgraded = await showSaveAccountDialog(context);
@@ -162,14 +182,14 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
         // The stylist keeps its results across tab switches; the lists reload each time they are opened
         body: Column(
           children: [
-            if (_user.isGuest)
+            if (_user.isGuest && !_guestBannerDismissed)
               Material(
                 color: AuraColors.accentIris.withOpacity(0.12),
                 child: InkWell(
                   onTap: _saveGuestAccount,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.only(
+                        left: 20, top: 4, bottom: 4, right: 4),
                     child: Row(
                       children: [
                         Icon(Icons.info_outline,
@@ -185,6 +205,12 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
                         Text('Save',
                             style: theme.textTheme.labelLarge
                                 ?.copyWith(color: AuraColors.accentIrisGlow)),
+                        IconButton(
+                          tooltip: 'Dismiss',
+                          icon: Icon(Icons.close,
+                              size: 18, color: AuraColors.textSecondary),
+                          onPressed: _dismissGuestBanner,
+                        ),
                       ],
                     ),
                   ),
