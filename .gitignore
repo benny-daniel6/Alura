@@ -37,7 +37,8 @@ firebase-credentials.json
 service-account.json
 
 # Storage
-data/
+/data/
+/backend/data/
 minio_data/
 postgres_data/
 redis_data/
